@@ -812,6 +812,63 @@ def open_user_dashboard(user_id, username):
     """
             
 
+    def forum(user_id, username):
+        uid = user_id
+        user = username
+
+        forum_window = ctk.CTkToplevel(window)
+        forum_window.title("My Profile")
+        forum_window.geometry("900x600")
+        forum_window.configure(fg_color="#260356")
+        forum_window.resizable(False, False)
+
+        message_board = ctk.scrollable_frame(forum_window, width=700, height=400, fg_color="transparent", 
+            scrollbar_button_color="#FFFFFF", )
+        message_board.place(x=100, y=100, anchor="nw", fill="both")
+
+        forum_hero = ctk.label(img="placeimagehere.png", width=900, height=60)
+        forum_hero.place(x=0, y=0, anchor="nw")
+
+        forum_entry = ctk.entry(forum_window, fg_color="transparent", placeholder_text="Add a message.", font=("Segoe UI", 20, "bold"), width="80", height="60", corner_radius="12")
+        forum_entry.place(x=720, y=520, anchor="nw")
+
+        forum_post = ctk.CTkButton(forum_window, fg_color="transparent", text="Post Message", width=60, height="40", corner_radius="12")
+        forum_post.place(x=720, y=580)
+
+        def confirm_create():
+            name = entry.get().strip()
+            if not name:
+                ctk.CTkLabel(popup, text="Name cannot be empty.", text_color="red").pack()
+                return
+
+            conn = sqlite3.connect("userdata.db")
+            cur = conn.cursor()
+            from datetime import datetime
+            cur.execute(
+                "INSERT INTO projects (user_id, project_name, date_created) VALUES (?, ?, ?)",
+                (user_id, name, datetime.now().strftime("%m/%d/%Y %I:%M:%S %p"))
+            )
+            conn.commit()
+            conn.close()
+            popup.destroy()
+            projects_menu(parent_frame.master, user_id, myProjects)
+
+        ctk.CTkButton(popup, text="Create", fg_color="#4B2FB8", command=confirm_create).pack(pady=20)
+
+        nonlocal home_label, home_label_window, takeme_btn, takeme_btn_window
+        clear_overlays()
+        for widget in content_frame.winfo_children():
+            widget.destroy()
+        if home_label is None:
+            home_label = ctk.CTkLabel(window, image=window.home_img, text="", fg_color="transparent", height=619, width=996)
+            home_label_window = canvas.create_window(80, 80, anchor="nw", window=home_label)
+        if takeme_btn is None:
+            takeme_btn = ctk.CTkButton(window, height=39, width=171, image=window.takeme_img, text="", fg_color="transparent", hover_color="#360A64", command=my_projects)
+            takeme_btn_window = canvas.create_window(105,550,anchor="nw",window=takeme_btn)
+
+
+
+
     
     # loads user projects from server db, if none are found there is a creation option
     # TODO: figure out why content_frame is deleted sometimes
