@@ -112,6 +112,29 @@ def open_user_dashboard(user_id, username):
         update_dropdown.set("All")
         update_dropdown.place(x=728, y=526)
 
+    def change_profile_picture(user_id):
+        def upload_image():
+            from tkinter import filedialog, messagebox
+            file_path = filedialog.askopenfilename(
+                title="Select Profile Picture",
+                filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.gif")]
+            )
+            if not file_path:
+                return
+
+            try:
+                with open(file_path, "rb") as f:
+                    img_data = f.read()
+                conn = sqlite3.connect("userdata.db")
+                cur = conn.cursor()
+                cur.execute("UPDATE userdata SET profile_picture = ? WHERE id = ?", (img_data, user_id))
+                conn.commit()
+                conn.close()
+                messagebox.showinfo("Success", "Profile picture updated successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to update profile picture: {e}")
+
+
     def open_profile_window(user_id):
         profile_win = ctk.CTkToplevel(window)
         profile_win.title("My Profile")
@@ -810,9 +833,48 @@ def open_user_dashboard(user_id, username):
             else:
                 print("Part addition failed")
     """
-            
+    def delete_forum_message(message_id):
+        conn = sqlite3.connect("userdata.db")
+        cur = conn.cursor()
+
+        cur.execute("DELETE FROM forum_messages WHERE id = ?", (message_id,))
+
+        conn.commit()
+        conn.close()
+        
+        save_popup("Message deleted successfully.")
+
+        # Update the forum view
+        forum(user_id, username)
+        
+    def save_forum_message(user_id, username, message):
+        conn = sqlite3.connect("userdata.db")
+        cur = conn.cursor()
+        from datetime import datetime
+
+        def check_limit():
+            cur.execute("SELECT COUNT(*) FROM forum_messages WHERE user_id = ? AND timestamp >= datetime('now', '-1 hour')", (user_id,))
+            count = cur.fetchone()[0]
+            return count < 5
+        
+        if not check_limit():
+            print("Message limit reached.")
+            return
+        if message.strip() == "":
+            print("Empty message, not saved.")
+            return
+        
+        cur.execute("INSERT INTO forum_messages (user_id, username, message, timestamp) VALUES (?, ?, ?, ?)",
+                (user_id, username, message, datetime.now().strftime("%m/%d/%Y %I:%M:%S %p")))
+        
+        save_popup("Message posted successfully!")
+        
+        conn.commit()
+        conn.close()
 
     def forum(user_id, username):
+        clear_overlays()
+        clearLabels()
         uid = user_id
         user = username
 
@@ -866,10 +928,6 @@ def open_user_dashboard(user_id, username):
             takeme_btn = ctk.CTkButton(window, height=39, width=171, image=window.takeme_img, text="", fg_color="transparent", hover_color="#360A64", command=my_projects)
             takeme_btn_window = canvas.create_window(105,550,anchor="nw",window=takeme_btn)
 
-
-
-
-    
     # loads user projects from server db, if none are found there is a creation option
     # TODO: figure out why content_frame is deleted sometimes
     # TODO: tidy up code and minimize redundancy
@@ -1047,7 +1105,7 @@ def open_user_dashboard(user_id, username):
         exhaust_btn.place(x=180, y=577, anchor="nw")
         airfilter_btn = ctk.CTkButton(scroll_frame, image=airfilter_img, text="", fg_color="transparent", border_width=0, hover_color="#170438", command=clicked)
         airfilter_btn.place(x=180, y=646, anchor="nw")
-        save_btn = ctk.CTkButton(scroll_frame, image=save_img, text="", fg_color="transparent", border_width=0, hover_color="#170438", command=lambda: save_popup(content_frame))
+        save_btn = ctk.CTkButton(scroll_frame, image=save_img, text="", fg_color="transparent", border_width=0, hover_color="#170438", command=lambda: save_popup("Project saved successfully!"))
         save_btn.place(x=715, y=746, anchor="nw")
 
         projectParts = []
@@ -1090,8 +1148,7 @@ def open_user_dashboard(user_id, username):
         else:
             print("project_id not found")
 
-
-    def save_popup(parent):
+    def save_popup(message):
         if not save_project():
             return
         window.update_idletasks()
@@ -1115,7 +1172,7 @@ def open_user_dashboard(user_id, username):
 
         label = ctk.CTkLabel(
             toast,
-            text="🗹  Project Saved!",
+            text=f"🗹  {message}",
             text_color="white",
             font=ctk.CTkFont(size=24, weight="bold", family="Segoe UI"),
             anchor="w",

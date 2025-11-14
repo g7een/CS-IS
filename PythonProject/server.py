@@ -77,6 +77,7 @@ def setup_database():
         )
     """)
 
+    #--- Project Parts Link ---#
     cur.execute("""
         CREATE TABLE IF NOT EXISTS project_parts (
             link_id INTEGER PRIMARY KEY,
@@ -87,7 +88,28 @@ def setup_database():
             FOREIGN KEY(part_id) REFERENCES parts(part_id)
         ) 
     """)
-    
+
+    #--- Messages ---#
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            message_id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES userdata(id)
+        )
+    """)
+
+    #--- Profile Pictures ---#
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS profile_pictures(
+                pic_id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                image BLOB NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES userdata(id)
+            )
+        """)
+
     conn.commit()
     conn.close()
 
