@@ -134,6 +134,57 @@ def open_user_dashboard(user_id, username):
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to update profile picture: {e}")
 
+    def search_part(entry, combobox, content_frame, user_id=1):
+        import socket
+        part_id = entry.get().strip()
+        quantity = combobox.get().strip()
+
+        if not part_id or not quantity.isdigit():
+            errorLabel = ctk.CTkLabel(
+                content_frame,
+                text="Enter valid Part ID and Quantity",
+                text_color="red",
+            )
+            errorLabel.place(relx=0.1, rely=0.4, anchor="nw")
+            return
+
+        try:
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.connect(("localhost", 9000))
+
+            message = f"add:{user_id}:{part_id}:{quantity}"
+            client.send(message.encode())
+
+            response = client.recv(4096).decode()
+
+            success = "success" in response.lower()
+            text = f"Updated cart for user {user_id}" if success else response
+            ctk.CTkLabel(content_frame, text=text, text_color="#00FF00" if success else "red").place(relx=0.1, rely=0.5, anchor="nw")
+
+
+            client.close()
+        except Exception as e:
+            ctk.CTkLabel(
+                content_frame,
+                text=f"Error connecting to server: {e}",
+                text_color="red",
+                font=ctk.CTkFont(size=16, family="Segoe UI")
+            ).place(relx=0.1, rely=0.4, anchor="nw")
+
+    def favorites():
+        clear_overlays()
+        clearLabels()
+
+        base_path = Path(__file__).parent / "Images"
+        try:
+            fav_frame_image = ctk.CTkImage(Image.open(base_path / "FavoritesUI.png"), size=(873, 548))
+        except Exception as e:
+            print(f"Error loading favorites frame image: {e}")
+
+        fav_frame_label = ctk.CTkLabel(content_frame, text="", image=fav_frame_image, fg_color="transparent", height=548, width=873)
+        fav_frame_label.place(relx=0.5, rely=0.5, anchor="center")
+        
+
 
     def open_profile_window(user_id):
         profile_win = ctk.CTkToplevel(window)
