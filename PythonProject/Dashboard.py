@@ -184,8 +184,6 @@ def open_user_dashboard(user_id, username):
         fav_frame_label = ctk.CTkLabel(content_frame, text="", image=fav_frame_image, fg_color="transparent", height=548, width=873)
         fav_frame_label.place(relx=0.5, rely=0.5, anchor="center")
         
-
-
     def open_profile_window(user_id):
         profile_win = ctk.CTkToplevel(window)
         profile_win.title("My Profile")
@@ -328,6 +326,55 @@ def open_user_dashboard(user_id, username):
 
         create_overlay()
 
+    def compatibility():
+        prompt = "Given the specifications and parts selections for an automotive project, generate a compatibility score from 1 to 5. " \
+        "Consider factors such as engine type, transmission, suspension, and other components. " \
+        "Provide a brief explanation for the score based on how well the parts work together. The score should have one floating point digit, formatted: X.X - Explanation."
+
+        def get_compatibility_score(prompt):
+            # Call to the API or logic to get the compatibility score
+            # placeholder return
+            return "4.5 - The selected parts are highly compatible."
+        
+        score = get_compatibility_score(prompt)
+        
+        
+        import socket
+        part_id = entry.get().strip()
+        quantity = combobox.get().strip()
+
+        if not part_id or not quantity.isdigit():
+            errorLabel = ctk.CTkLabel(
+                content_frame,
+                text="Enter valid Part ID and Quantity",
+                text_color="red",
+            )
+            errorLabel.place(relx=0.1, rely=0.4, anchor="nw")
+            return
+
+        try:
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.connect(("localhost", 9000))
+
+            message = f"add:{user_id}:{part_id}:{quantity}"
+            client.send(message.encode())
+
+            response = client.recv(4096).decode()
+
+            success = "success" in response.lower()
+            text = f"Updated cart for user {user_id}" if success else response
+            ctk.CTkLabel(content_frame, text=text, text_color="#00FF00" if success else "red").place(relx=0.1, rely=0.5, anchor="nw")
+
+
+            client.close()
+        except Exception as e:
+            ctk.CTkLabel(
+                content_frame,
+                text=f"Error connecting to server: {e}",
+                text_color="red",
+                font=ctk.CTkFont(size=16, family="Segoe UI")
+            ).place(relx=0.1, rely=0.4, anchor="nw")
+
     def switch_to_compatibility():
         clear_overlays()
         clearLabels()
@@ -408,6 +455,7 @@ def open_user_dashboard(user_id, username):
                         text=f"📦 {pname}\nProject ID: {pid}\n📅 Created: {pdate}\nExample Rating (will be dynamic based on parts): {rating.cget('text')}, issues regarding transmission with respect to engine type X on project {pname}",
                         text_color="white", wraplength=400, justify="left"
                     )
+                compatibility()
                 btn = ctk.CTkButton(project_list, text=f"{proj_name}\n📅 {proj_date}", width=250, height=50, fg_color="#482D8C",
                                     hover_color="#5E3FC2", command=select_project)
                 btn.pack(pady=5)
