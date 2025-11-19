@@ -338,6 +338,7 @@ def open_user_dashboard(user_id, username):
         
         score = get_compatibility_score(prompt)
         
+
         
         import socket
         part_id = entry.get().strip()
@@ -972,6 +973,35 @@ def open_user_dashboard(user_id, username):
         conn.close()
 
     def forum(user_id, username):
+        base_path = Path(__file__).parent / "Images"
+        try:
+            forum_bg_img = ctk.CTkImage(Image.open(base_path / "Forum.png"), size=(450, 800))
+        except Exception as e:
+            print(f"Error loading forum background image: {e}")
+            forum_bg_img = None
+        print("Opening forum for user:", username)
+
+        forum = ctk.scrollable_frame(content_frame, text="", image=forum_bg_img, fg_color="transparent", height=450, width=800)
+        forum.place(relx=0.5, rely=0, anchor="center")
+        
+        clearLabels()
+        clear_overlays()
+        for widget in content_frame.winfo_children():
+            widget.destroy()
+        base_path = Path(__file__).parent / "Images"
+
+        scroll_frame = ctk.CTkScrollableFrame(content_frame, fg_color="#18003A", corner_radius=0,
+            width=1000, height=620
+        )
+        scroll_frame.pack(fill="both", expand=True)
+        
+        conn = sqlite3.connect("userdata.db")
+        cur = conn.cursor()
+        cur.execute("SELECT project_name, date_created FROM projects WHERE project_id = ?", (projectId,))
+        projects = cur.fetchone()
+        conn.close()
+        header_text = f"Name: {projects[0]} | Created: {projects[1]}"
+
         clear_overlays()
         clearLabels()
         uid = user_id
