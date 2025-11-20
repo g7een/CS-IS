@@ -183,6 +183,7 @@ def open_user_dashboard(user_id, username):
 
         fav_frame_label = ctk.CTkLabel(content_frame, text="", image=fav_frame_image, fg_color="transparent", height=548, width=873)
         fav_frame_label.place(relx=0.5, rely=0.5, anchor="center")
+
         
     def open_profile_window(user_id):
         profile_win = ctk.CTkToplevel(window)
@@ -337,8 +338,6 @@ def open_user_dashboard(user_id, username):
             return "4.5 - The selected parts are highly compatible."
         
         score = get_compatibility_score(prompt)
-        
-
         
         import socket
         part_id = entry.get().strip()
@@ -976,6 +975,7 @@ def open_user_dashboard(user_id, username):
         base_path = Path(__file__).parent / "Images"
         try:
             forum_bg_img = ctk.CTkImage(Image.open(base_path / "Forum.png"), size=(450, 800))
+            postM = ctk.CTkImage(Image.open(base_path / "Post.png"), size=(128, 43))
         except Exception as e:
             print(f"Error loading forum background image: {e}")
             forum_bg_img = None
@@ -983,79 +983,105 @@ def open_user_dashboard(user_id, username):
 
         forum = ctk.scrollable_frame(content_frame, text="", image=forum_bg_img, fg_color="transparent", height=450, width=800)
         forum.place(relx=0.5, rely=0, anchor="center")
-        
-        clearLabels()
-        clear_overlays()
-        for widget in content_frame.winfo_children():
-            widget.destroy()
-        base_path = Path(__file__).parent / "Images"
 
-        scroll_frame = ctk.CTkScrollableFrame(content_frame, fg_color="#18003A", corner_radius=0,
-            width=1000, height=620
-        )
-        scroll_frame.pack(fill="both", expand=True)
-        
+        entry = ctk.entry(forum, fg_color="#7745BD", placeholder_text="Add a message.", font=("Segoe UI", 12, "bold"), width="385", height="40", corner_radius="12")
+        entry.place(x=(372-335), y=(732-88), anchor="nw")
+
+        postMessage = ctk.CTkButton(forum, fg_color="#5E329C", text="", width="128", height="43", corner_radius="12", image=postM, command=lambda: save_forum_message(user_id, username, entry.get()))
+        postMessage.place(x=(637-335), y=(799-88), anchor="nw")
+
+        #Load existing messages
         conn = sqlite3.connect("userdata.db")
         cur = conn.cursor()
-        cur.execute("SELECT project_name, date_created FROM projects WHERE project_id = ?", (projectId,))
-        projects = cur.fetchone()
+        cur.execute("SELECT id, user_id, username, message, timestamp FROM forum_messages ORDER BY timestamp DESC")
+        messages = cur.fetchall()
+
         conn.close()
-        header_text = f"Name: {projects[0]} | Created: {projects[1]}"
+        offset_messages = 15
+        for msg_id, uid, uname, msg, ts in messages:
 
-        clear_overlays()
-        clearLabels()
-        uid = user_id
-        user = username
+            msg_frame = ctk.CTkFrame(forum, fg_color="#5A3392", width=700, height=100, corner_radius=12)
+            msg_frame.place(x=50, y=offset_messages, anchor="nw")
 
-        forum_window = ctk.CTkToplevel(window)
-        forum_window.title("My Profile")
-        forum_window.geometry("900x600")
-        forum_window.configure(fg_color="#260356")
-        forum_window.resizable(False, False)
+            msg_label = ctk.CTkLabel(msg_frame, text=f"{uname} (@{ts}):\n{msg}", font=("Segoe UI", 12), text_color="white", justify="left", wraplength=650)
+            msg_label.place(x=10, y=10)
 
-        message_board = ctk.scrollable_frame(forum_window, width=700, height=400, fg_color="transparent", 
-            scrollbar_button_color="#FFFFFF", )
-        message_board.place(x=100, y=100, anchor="nw", fill="both")
+            if uid == user_id:
+                delete_btn = ctk.CTkButton(msg_frame, text="Delete", fg_color="#AA3333", hover_color="#FF5555", width=60, height=30,
+                                           command=lambda mid=msg_id: delete_forum_message(mid))
+                delete_btn.place(x=620, y=60)
 
-        forum_hero = ctk.label(img="placeimagehere.png", width=900, height=60)
-        forum_hero.place(x=0, y=0, anchor="nw")
+            offset_messages += 110
+        
+        def open_profile(user_id, username):
+            uid = user_id
+            user = username
+            profile_win = ctk.CTkToplevel(window)
+            profile_win.title("My Profile")
+            profile_win.geometry("500x450")
+            profile_win.configure(fg_color="#260356")
+            profile_win.resizable(False, False)
+            profile_win.attributes("-alpha", 0.0)
 
-        forum_entry = ctk.entry(forum_window, fg_color="transparent", placeholder_text="Add a message.", font=("Segoe UI", 20, "bold"), width="80", height="60", corner_radius="12")
-        forum_entry.place(x=720, y=520, anchor="nw")
+            profile_win.wm_transient(window)
+            profile_win.grab_set()
 
-        forum_post = ctk.CTkButton(forum_window, fg_color="transparent", text="Post Message", width=60, height="40", corner_radius="12")
-        forum_post.place(x=720, y=580)
-
-        def confirm_create():
-            name = entry.get().strip()
-            if not name:
-                ctk.CTkLabel(popup, text="Name cannot be empty.", text_color="red").pack()
-                return
-
-            conn = sqlite3.connect("userdata.db")
-            cur = conn.cursor()
-            from datetime import datetime
-            cur.execute(
-                "INSERT INTO projects (user_id, project_name, date_created) VALUES (?, ?, ?)",
-                (user_id, name, datetime.now().strftime("%m/%d/%Y %I:%M:%S %p"))
+            close_btn = ctk.CTkButton(
+                profile_win,
+                text="Close",
+                width=30,
+                height=30,
+                corner_radius=15,
+                fg_color="#A564EB",
+                hover_color="#C58EFF",
+                text_color="white",
+                command=profile_win.destroy
             )
-            conn.commit()
-            conn.close()
-            popup.destroy()
-            projects_menu(parent_frame.master, user_id, myProjects)
+            close_btn.place(x=440, y=10)
 
-        ctk.CTkButton(popup, text="Create", fg_color="#4B2FB8", command=confirm_create).pack(pady=20)
+            ctk.CTkLabel(
+                profile_win,
+                text="User Profile",
+                font=("Segoe UI", 24, "bold"),
+                text_color="white"
+            ).pack(pady=(40, 20))
 
-        nonlocal home_label, home_label_window, takeme_btn, takeme_btn_window
-        clear_overlays()
-        for widget in content_frame.winfo_children():
-            widget.destroy()
-        if home_label is None:
-            home_label = ctk.CTkLabel(window, image=window.home_img, text="", fg_color="transparent", height=619, width=996)
-            home_label_window = canvas.create_window(80, 80, anchor="nw", window=home_label)
-        if takeme_btn is None:
-            takeme_btn = ctk.CTkButton(window, height=39, width=171, image=window.takeme_img, text="", fg_color="transparent", hover_color="#360A64", command=my_projects)
-            takeme_btn_window = canvas.create_window(105,550,anchor="nw",window=takeme_btn)
+            try:
+                conn = sqlite3.connect("userdata.db")
+                cur = conn.cursor()
+                cur.execute("SELECT id, username, registry FROM userdata WHERE id = ?", (user_id,))
+                user = cur.fetchone()
+            except Exception as e:
+                ctk.CTkLabel(profile_win, text=f"Error: {e}", text_color="red").pack(pady=20)
+                return
+            finally:
+                conn.close()
+
+            clear_overlays()
+            clearLabels()
+            uid = user_id
+            user = username
+
+            forum_window = ctk.CTkToplevel(window)
+            forum_window.title("My Profile")
+            forum_window.geometry("900x600")
+            forum_window.configure(fg_color="#260356")
+            forum_window.resizable(False, False)
+
+            message_board = ctk.scrollable_frame(forum_window, width=700, height=400, fg_color="transparent", 
+                scrollbar_button_color="#FFFFFF", )
+            message_board.place(x=100, y=100, anchor="nw", fill="both")
+
+            forum_hero = ctk.label(img="placeimagehere.png", width=900, height=60)
+            forum_hero.place(x=0, y=0, anchor="nw")
+
+            forum_entry = ctk.entry(forum_window, fg_color="transparent", placeholder_text="Add a message.", font=("Segoe UI", 20, "bold"), width="80", height="60", corner_radius="12")
+            forum_entry.place(x=720, y=520, anchor="nw")
+
+            forum_post = ctk.CTkButton(forum_window, fg_color="transparent", text="Post Message", width=60, height="40", corner_radius="12")
+            forum_post.place(x=720, y=580)
+
+    
 
     # loads user projects from server db, if none are found there is a creation option
     # TODO: figure out why content_frame is deleted sometimes
