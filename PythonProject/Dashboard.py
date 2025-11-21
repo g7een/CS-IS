@@ -187,6 +187,8 @@ def open_user_dashboard(user_id, username):
         fav_frame_label = ctk.CTkLabel(content_frame, text="", image=fav_frame_image, fg_color="transparent", height=548, width=873)
         fav_frame_label.place(relx=0.5, rely=0.5, anchor="center")
 
+
+
         
     def open_profile_window(user_id):
         profile_win = ctk.CTkToplevel(window)
@@ -362,7 +364,7 @@ def open_user_dashboard(user_id, username):
             X.X - Explanation
 
             Consider:
-            - Engine ↔ transmission compatibility
+            - Engine, transmission compatibility
             - Drivetrain consistency
             - Suspension suitability
             - Electrical system load matching
@@ -411,7 +413,6 @@ def open_user_dashboard(user_id, username):
         )
         comp_frame_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Rating label (numeric)
         rating = ctk.CTkLabel(
             content_frame, text='-', width=40, height=28, 
             fg_color="#5D3296",
@@ -420,8 +421,6 @@ def open_user_dashboard(user_id, username):
         )
         rating.place(x=770, y=106, anchor="nw")
 
-
-        # Load star images
         base_path = Path(__file__).parent / "Ratings"
         try:
             R1 = ctk.CTkImage(Image.open(base_path / "R1.png"), size=(33, 34))
@@ -429,6 +428,7 @@ def open_user_dashboard(user_id, username):
             R3 = ctk.CTkImage(Image.open(base_path / "R3.png"), size=(103, 34))
             R4 = ctk.CTkImage(Image.open(base_path / "R4.png"), size=(138, 34))
             R5 = ctk.CTkImage(Image.open(base_path / "R5.png"), size=(173, 34))
+
         except Exception as e:
             print(f"Error loading rating images: {e}")
 
@@ -440,12 +440,9 @@ def open_user_dashboard(user_id, username):
 
         star_labels = [R1L, R2L, R3L, R4L, R5L]
 
-        # Hide all stars initially
         for lbl in star_labels:
             lbl.place_forget()
 
-
-        # Load user's projects
         conn = sqlite3.connect("userdata.db")
         cur = conn.cursor()
         cur.execute("SELECT project_id, project_name, date_created FROM projects WHERE user_id = ?", (user_id,))
@@ -459,7 +456,6 @@ def open_user_dashboard(user_id, username):
         )
         project_list.place(x=87, y=160, anchor="nw")
 
-        # Right panel
         details_frame = ctk.CTkFrame(content_frame, width=430, height=350, fg_color="#4F228C", corner_radius=0)
         details_frame.place(x=485, y=195, anchor="nw")
 
@@ -470,7 +466,6 @@ def open_user_dashboard(user_id, username):
         project_details.place(x=20, y=20)
 
 
-        # ⭐ Update star graphic to match rating
         def update_star_display(score_float):
             for lbl in star_labels:
                 lbl.place_forget()
@@ -487,7 +482,6 @@ def open_user_dashboard(user_id, username):
                 R5L.place(x=505, y=104, anchor="nw")
 
 
-        # 🔥 When project is clicked → Generate AI compatibility score
         def select_project(pid, pname, pdate):
             project_details.configure(
                 text=f"📦 {pname}\nProject ID: {pid}\n📅 Created: {pdate}\n\nGenerating compatibility...",
@@ -495,14 +489,13 @@ def open_user_dashboard(user_id, username):
             )
             content_frame.update()
 
-            # Call ChatGPT compatibility
-            result = compatibility(pid)  # <-- Your AI call
+            result = compatibility(pid)
             score_str, explanation = result.split(" - ", 1)
 
             # Update numeric rating
             rating.configure(text=score_str)
 
-            # Convert score to float for star display
+
             try:
                 score_float = float(score_str)
                 update_star_display(score_float)
@@ -521,7 +514,6 @@ def open_user_dashboard(user_id, username):
             )
 
 
-        # Build project buttons
         if projects:
             for proj_id, proj_name, proj_date in projects:
                 btn = ctk.CTkButton(
@@ -1071,7 +1063,10 @@ def open_user_dashboard(user_id, username):
                 delete_btn.place(x=620, y=60)
 
             offset_messages += 110
-        
+
+        forum.configure(scrollbar_button_color="#A392BB", scrollbar_button_hover_color="#FFFFFF")
+
+
         def open_profile(user_id, username):
             uid = user_id
             user = username
@@ -1140,7 +1135,98 @@ def open_user_dashboard(user_id, username):
             forum_post = ctk.CTkButton(forum_window, fg_color="transparent", text="Post Message", width=60, height="40", corner_radius="12")
             forum_post.place(x=720, y=580)
 
-    
+    def gallery_menu():
+        clearLabels()
+        clear_overlays()
+        for widget in content_frame.winfo_children():
+            widget.destroy()
+        base_path = Path(__file__).parent / "Images"
+
+        gMenu_frame = ctk.CTkFrame(content_frame, fg_color="18003A", width=1000, height=620, corner_radius=0)
+        gMenu_frame.place(x=50, y=50, anchor="nw")
+
+    def gallery():
+        clearLabels()
+        clear_overlays()
+        for widget in content_frame.winfo_children():
+            widget.destroy()
+        base_path = Path(__file__).parent / "Images"
+
+        gallery_frame = ctk.CTkScrollableFrame(content_frame, fg_color="#18003A", corner_radius=0,
+            width=1000, height=620)
+        gallery_frame.place(x=50, y=50, anchor="nw")
+
+        try:
+            gallery_header_img = ctk.CTkImage(Image.open(base_path / "GalleryHeader.png"), size=(900, 70))
+        except Exception as e:
+            print(f"Error loading gallery header image: {e}")
+
+        header = ctk.CTkLabel(content_frame, text="", image=gallery_header_img, fg_color="transparent", height=70, width=900)
+        header.place(x=100, y=0, anchor="nw")
+
+        # Placeholder
+        for i in range(12):
+            item_frame = ctk.CTkFrame(gallery_frame, fg_color="#350972", width=280, height=200, corner_radius=12)
+            item_frame.grid(row=i//3, column=i%3, padx=20, pady=20)
+
+            try:
+                item_img = ctk.CTkImage(Image.open(base_path / f"GalleryItem{i+1}.png"), size=(260, 140))
+            except Exception as e:
+                print(f"Error loading gallery item image {i+1}: {e}")
+                item_img = None
+
+            img_label = ctk.CTkLabel(item_frame, text="", image=item_img, fg_color="transparent", width=260, height=140)
+            img_label.place(x=10, y=10)
+
+            item_label = ctk.CTkLabel(item_frame, text=f"Project {i+1}", font=("Segoe UI", 16), text_color="white")
+            item_label.place(x=10, y=160)
+        
+    def groups():
+        clearLabels()
+        clear_overlays()
+        for widget in content_frame.winfo_children():
+            widget.destroy()
+        base_path = Path(__file__).parent / "Images"
+
+        groups_frame = ctk.CTkScrollableFrame(content_frame, fg_color="#18003A", corner_radius=0,
+            width=1000, height=620
+        )
+        groups_frame.pack(fill="both", expand=True)
+        try:
+            groups_header_img = ctk.CTkImage(Image.open(base_path / "GroupsHeader.png"), size=(900, 70))    
+        except Exception as e:
+            print(f"Error loading groups header image: {e}")
+        
+        header = ctk.CTkLabel(content_frame, text="", image=groups_header_img, fg_color="transparent", height=70, width=900)
+        header.place(x=100, y=0, anchor="nw")  
+        
+        conn = sqlite3.connect("userdata.db")
+        cur = conn.cursor()
+        cur.execute("SELECT group_id, group_name, date_created FROM groups")
+        groups = cur.fetchall()
+        conn.close()
+        if groups:
+            for grp_id, grp_name, grp_date in groups:
+                btn = ctk.CTkButton(
+                    groups_frame,
+                    text=f"{grp_name}\n📅 {grp_date}",
+                    width=320,
+                    height=60,
+                    corner_radius=10,
+                    fg_color="#482D8C",
+                    hover_color="#5E3FC2",
+                    command=lambda gid=grp_id: open_group_page(gid)
+                )
+                btn.pack(pady=8)
+        else:
+            no_grp_label = ctk.CTkLabel(
+                groups_frame,
+                text="No groups found.",
+                text_color="gray",
+                font=("Segoe UI", 16)
+            )
+            no_grp_label.pack(pady=(20, 10))
+
 
     # loads user projects from server db, if none are found there is a creation option
     # TODO: figure out why content_frame is deleted sometimes
@@ -1184,7 +1270,6 @@ def open_user_dashboard(user_id, username):
         projects = cur.fetchall()
         conn.close()
 
-        # --- Populate projects as buttons ---
         if projects:
             for proj_id, proj_name, proj_date in projects:
                 btn = ctk.CTkButton(
@@ -1207,7 +1292,6 @@ def open_user_dashboard(user_id, username):
             )
             no_proj_label.pack(pady=(20, 10))
 
-        # --- New Project button ---
 
         new_proj_btn = ctk.CTkButton(
             menu,
@@ -1249,12 +1333,10 @@ def open_user_dashboard(user_id, username):
             conn.commit()
             conn.close()
             popup.destroy()
-            # Reload menu
             projects_menu(parent_frame.master, user_id, myProjects)
 
         ctk.CTkButton(popup, text="Create", fg_color="#4B2FB8", command=confirm_create).pack(pady=20)
 
-    # will recieve ID and load project accordingly
     def my_projects(projectId):
         clearLabels()
         clear_overlays()
@@ -1274,7 +1356,6 @@ def open_user_dashboard(user_id, username):
         conn.close()
         header_text = f"Name: {projects[0]} | Created: {projects[1]}"
 
-        # load project data from db and customize heading label
 
         try:
             build_img = Image.open(base_path / "Project_Frame.png")
