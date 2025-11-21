@@ -82,11 +82,14 @@ def setup_database():
         CREATE TABLE IF NOT EXISTS project_parts (
             link_id INTEGER PRIMARY KEY,
             project_id INTEGER NOT NULL,
-            part_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            manufacturer TEXT,
+            description TEXT,
+            price REAL,
+            category TEXT,
             quantity INTEGER NOT NULL DEFAULT 1,
-            FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE CASCADE,
-            FOREIGN KEY(part_id) REFERENCES parts(part_id)
-        ) 
+            FOREIGN KEY(project_id) REFERENCES projects(project_id) ON DELETE CASCADE
+        )
     """)
 
     #--- Messages ---#

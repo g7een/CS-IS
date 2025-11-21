@@ -7,6 +7,9 @@ import hashlib
 import socket
 import sqlite3
 from datetime import datetime
+from openai import OpenAI
+client = OpenAI(api_key="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")
+
 
 
 OUTPUT_PATH = Path(__file__).parent
@@ -327,53 +330,70 @@ def open_user_dashboard(user_id, username):
 
         create_overlay()
 
-    def compatibility():
-        prompt = "Given the specifications and parts selections for an automotive project, generate a compatibility score from 1 to 5. " \
-        "Consider factors such as engine type, transmission, suspension, and other components. " \
-        "Provide a brief explanation for the score based on how well the parts work together. The score should have one floating point digit, formatted: X.X - Explanation."
+    def compatibility(project_id):
+        conn = sqlite3.connect("userdata.db")
+        cur = conn.cursor()
 
-        def get_compatibility_score(prompt):
-            # Call to the API or logic to get the compatibility score
-            # placeholder return
-            return "4.5 - The selected parts are highly compatible."
-        
-        score = get_compatibility_score(prompt)
-        
-        import socket
-        part_id = entry.get().strip()
-        quantity = combobox.get().strip()
+        cur.execute("""
+            SELECT name, manufacturer, description, price, category, quantity
+            FROM project_parts
+            WHERE project_id = ?
+        """, (project_id,))
 
-        if not part_id or not quantity.isdigit():
-            errorLabel = ctk.CTkLabel(
-                content_frame,
-                text="Enter valid Part ID and Quantity",
-                text_color="red",
+
+        parts = cur.fetchall()
+        conn.close()
+
+        if not parts:
+            formatted_parts = "No parts found for this project."
+        else:
+            formatted_parts = "\n".join(
+                f"- {name} ({category}) x{qty} — {manufacturer or 'Unknown'}, "
+                f"{description or 'No description'} (${price})"
+                for name, manufacturer, description, price, category, qty in parts
             )
-            errorLabel.place(relx=0.1, rely=0.4, anchor="nw")
-            return
+
+        prompt = f"""
+            You are an expert automotive engineer.
+
+            Evaluate the compatibility of the following project components.
+            Output must be STRICT FORMAT:
+
+            X.X - Explanation
+
+            Consider:
+            - Engine ↔ transmission compatibility
+            - Drivetrain consistency
+            - Suspension suitability
+            - Electrical system load matching
+            - Fuel, cooling, and accessory alignment
+
+            Parts list:
+            {formatted_parts}
+        """
 
         try:
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(("localhost", 9000))
+            response = client.chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=[
+                    {"role": "system", "content": "Reply ONLY with: X.X - Explanation"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=150,
+                temperature=0.3
+            )
 
-            message = f"add:{user_id}:{part_id}:{quantity}"
-            client.send(message.encode())
+            result = response.choices[0].message["content"].strip()
 
-            response = client.recv(4096).decode()
+            if " - " not in result:
+                return "3.0 - Formatting issue."
 
-            success = "success" in response.lower()
-            text = f"Updated cart for user {user_id}" if success else response
-            ctk.CTkLabel(content_frame, text=text, text_color="#00FF00" if success else "red").place(relx=0.1, rely=0.5, anchor="nw")
+            return result
 
-
-            client.close()
         except Exception as e:
-            ctk.CTkLabel(
-                content_frame,
-                text=f"Error connecting to server: {e}",
-                text_color="red",
-                font=ctk.CTkFont(size=16, family="Segoe UI")
-            ).place(relx=0.1, rely=0.4, anchor="nw")
+            print("ChatGPT API Error:", e)
+            return "3.0 - Error generating compatibility score."
+
 
     def switch_to_compatibility():
         clear_overlays()
@@ -385,12 +405,23 @@ def open_user_dashboard(user_id, username):
         except Exception as e:
             print(f"Error loading compatibility frame image: {e}")
 
-        comp_frame_label = ctk.CTkLabel(content_frame, text="", image=comp_frame_image, fg_color="transparent", height=548, width=873)
+        comp_frame_label = ctk.CTkLabel(
+            content_frame, text="", image=comp_frame_image, 
+            fg_color="transparent", height=548, width=873
+        )
         comp_frame_label.place(relx=0.5, rely=0.5, anchor="center")
 
-        rating = ctk.CTkLabel(content_frame, text='NA', width=40, height=28, fg_color="#5D3296", font=ctk.CTkFont(size=20, family="Segoe UI", weight='bold'), text_color="white")
+        # Rating label (numeric)
+        rating = ctk.CTkLabel(
+            content_frame, text='-', width=40, height=28, 
+            fg_color="#5D3296",
+            font=ctk.CTkFont(size=20, family="Segoe UI", weight='bold'),
+            text_color="white"
+        )
         rating.place(x=770, y=106, anchor="nw")
-        # API connection, location table
+
+
+        # Load star images
         base_path = Path(__file__).parent / "Ratings"
         try:
             R1 = ctk.CTkImage(Image.open(base_path / "R1.png"), size=(33, 34))
@@ -398,69 +429,112 @@ def open_user_dashboard(user_id, username):
             R3 = ctk.CTkImage(Image.open(base_path / "R3.png"), size=(103, 34))
             R4 = ctk.CTkImage(Image.open(base_path / "R4.png"), size=(138, 34))
             R5 = ctk.CTkImage(Image.open(base_path / "R5.png"), size=(173, 34))
-        
         except Exception as e:
-            print(f"Error loading button images: {e}")
+            print(f"Error loading rating images: {e}")
 
-        R1L = ctk.CTkLabel(content_frame, text='', width=33, height=34, fg_color='#5E3497', image=R1)
-        R2L = ctk.CTkLabel(content_frame, text='', width=68, height=34, fg_color='#5E3497', image=R2)
-        R3L = ctk.CTkLabel(content_frame, text='', width=103, height=34, fg_color='#5E3497', image=R3)
-        R4L = ctk.CTkLabel(content_frame, text='', width=138, height=34, fg_color='#5E3497', image=R4)
-        R5L = ctk.CTkLabel(content_frame, text='', width=173, height=34, fg_color='#5E3497', image=R5)
+        R1L = ctk.CTkLabel(content_frame, text='', image=R1, fg_color="#5E3497")
+        R2L = ctk.CTkLabel(content_frame, text='', image=R2, fg_color="#5E3497")
+        R3L = ctk.CTkLabel(content_frame, text='', image=R3, fg_color="#5E3497")
+        R4L = ctk.CTkLabel(content_frame, text='', image=R4, fg_color="#5E3497")
+        R5L = ctk.CTkLabel(content_frame, text='', image=R5, fg_color="#5E3497")
 
-        project_list = ctk.CTkScrollableFrame(content_frame, width=240, height=300, fg_color="#471B82",
-                                              scrollbar_button_color="#9B9797", corner_radius=0, scrollbar_button_hover_color="#F0EBEB")
-        project_list.place(x=87, y=160, anchor="nw")
+        star_labels = [R1L, R2L, R3L, R4L, R5L]
 
+        # Hide all stars initially
+        for lbl in star_labels:
+            lbl.place_forget()
+
+
+        # Load user's projects
         conn = sqlite3.connect("userdata.db")
         cur = conn.cursor()
         cur.execute("SELECT project_id, project_name, date_created FROM projects WHERE user_id = ?", (user_id,))
         projects = cur.fetchall()
         conn.close()
 
+        project_list = ctk.CTkScrollableFrame(
+            content_frame, width=240, height=300, fg_color="#471B82",
+            scrollbar_button_color="#9B9797", corner_radius=0,
+            scrollbar_button_hover_color="#F0EBEB"
+        )
+        project_list.place(x=87, y=160, anchor="nw")
+
+        # Right panel
         details_frame = ctk.CTkFrame(content_frame, width=430, height=350, fg_color="#4F228C", corner_radius=0)
         details_frame.place(x=485, y=195, anchor="nw")
 
-        project_details = ctk.CTkLabel(details_frame, text="Select a project to view details.",
-                                       text_color="white", font=ctk.CTkFont(size=16), justify="left")
+        project_details = ctk.CTkLabel(
+            details_frame, text="Select a project to view compatibility.",
+            text_color="white", font=ctk.CTkFont(size=16), justify="left", wraplength=400
+        )
         project_details.place(x=20, y=20)
 
-        star_labels = [R1L, R2L, R3L, R4L, R5L]
-        for lbl in star_labels:
-            lbl.place_forget()
-        R5L.place(anchor="nw", x=505, y=104)
 
-        rating.configure(text="5.0")
-
-        def change_rating(choice):
-            rating_map = {"R1": (R1L, "1.0"), "R2": (R2L, "2.0"),
-                          "R3": (R3L, "3.0"), "R4": (R4L, "4.0"), "R5": (R5L, "5.0")}
+        # ⭐ Update star graphic to match rating
+        def update_star_display(score_float):
             for lbl in star_labels:
                 lbl.place_forget()
-            label, val = rating_map[choice]
-            label.place(anchor="nw", x=505, y=104)
-            rating.configure(text=val)
 
-        rating_dropdown = ctk.CTkOptionMenu(content_frame, values=["R1", "R2", "R3", "R4", "R5"],
-                                            fg_color="#5E329C", button_color="#8749DF",
-                                            button_hover_color="#CCAEEC", text_color="white",
-                                            width=80, command=change_rating)
-        rating_dropdown.set("R5")
-        rating_dropdown.place(x=850, y=600, anchor="nw")
+            if score_float <= 1.0:
+                R1L.place(x=505, y=104, anchor="nw")
+            elif score_float <= 2.0:
+                R2L.place(x=505, y=104, anchor="nw")
+            elif score_float <= 3.0:
+                R3L.place(x=505, y=104, anchor="nw")
+            elif score_float <= 4.0:
+                R4L.place(x=505, y=104, anchor="nw")
+            else:
+                R5L.place(x=505, y=104, anchor="nw")
 
+
+        # 🔥 When project is clicked → Generate AI compatibility score
+        def select_project(pid, pname, pdate):
+            project_details.configure(
+                text=f"📦 {pname}\nProject ID: {pid}\n📅 Created: {pdate}\n\nGenerating compatibility...",
+                text_color="white"
+            )
+            content_frame.update()
+
+            # Call ChatGPT compatibility
+            result = compatibility(pid)  # <-- Your AI call
+            score_str, explanation = result.split(" - ", 1)
+
+            # Update numeric rating
+            rating.configure(text=score_str)
+
+            # Convert score to float for star display
+            try:
+                score_float = float(score_str)
+                update_star_display(score_float)
+            except:
+                update_star_display(3.0)
+
+            # Update explanation
+            project_details.configure(
+                text=(
+                    f"📦 {pname}\nProject ID: {pid}\n📅 Created: {pdate}\n\n"
+                    f"⭐ Compatibility Score: {score_str}\n\n"
+                    f"{explanation}"
+                ),
+                wraplength=400,
+                justify="left"
+            )
+
+
+        # Build project buttons
         if projects:
             for proj_id, proj_name, proj_date in projects:
-                def select_project(pid=proj_id, pname=proj_name, pdate=proj_date):
-                    project_details.configure(
-                        text=f"📦 {pname}\nProject ID: {pid}\n📅 Created: {pdate}\nExample Rating (will be dynamic based on parts): {rating.cget('text')}, issues regarding transmission with respect to engine type X on project {pname}",
-                        text_color="white", wraplength=400, justify="left"
-                    )
-                compatibility()
-                btn = ctk.CTkButton(project_list, text=f"{proj_name}\n📅 {proj_date}", width=250, height=50, fg_color="#482D8C",
-                                    hover_color="#5E3FC2", command=select_project)
+                btn = ctk.CTkButton(
+                    project_list,
+                    text=f"{proj_name}\n📅 {proj_date}",
+                    width=250, height=50,
+                    fg_color="#482D8C", hover_color="#5E3FC2",
+                    command=lambda pid=proj_id, pname=proj_name, pdate=proj_date: select_project(pid, pname, pdate)
+                )
                 btn.pack(pady=5)
         else:
             ctk.CTkLabel(project_list, text="No projects found.", text_color="gray").pack(pady=20)
+
   
     def switch_to_resell():
         clear_overlays()
@@ -917,21 +991,6 @@ def open_user_dashboard(user_id, username):
             except Exception as e:
                 print(f"API Error - {e}")
     
-    """def addPart(proj_id, part_id, qty):
-        conn = sqlite3.connect("userdata.db")
-        cur = conn.cursor()
-
-        cur.execute("SELECT * FROM project_parts WHERE project_id = ?", (proj_id,))
-        if part_id is in cur.fetchall():
-            print({proj_id} + " Exists, part not added")
-        if cur is None:
-            print({proj_id}+ " ID not found (Project)")
-        else:
-            if cur.execute("INSERT INTO project_parts (project_id, part_id, quantity) VALUES (?, ?, ?)", (proj_id, part_id, qty)):
-                return
-            else:
-                print("Part addition failed")
-    """
     def delete_forum_message(message_id):
         conn = sqlite3.connect("userdata.db")
         cur = conn.cursor()
@@ -1304,8 +1363,6 @@ def open_user_dashboard(user_id, username):
             print("project_id not found")
 
     def save_popup(message):
-        if not save_project():
-            return
         window.update_idletasks()
 
         popup_height=60
