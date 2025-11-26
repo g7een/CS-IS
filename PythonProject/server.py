@@ -82,6 +82,7 @@ def setup_database():
         CREATE TABLE IF NOT EXISTS project_parts (
             link_id INTEGER PRIMARY KEY,
             project_id INTEGER NOT NULL,
+            part_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             manufacturer TEXT,
             description TEXT,
@@ -112,6 +113,19 @@ def setup_database():
                 FOREIGN KEY(user_id) REFERENCES userdata(id)
             )
         """)
+    
+    # --- Forum Messages --- #
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS forum_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            message TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES userdata(id)
+            )
+        """)
+
 
     conn.commit()
     conn.close()

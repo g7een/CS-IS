@@ -186,10 +186,7 @@ def open_user_dashboard(user_id, username):
 
         fav_frame_label = ctk.CTkLabel(content_frame, text="", image=fav_frame_image, fg_color="transparent", height=548, width=873)
         fav_frame_label.place(relx=0.5, rely=0.5, anchor="center")
-
-
-
-        
+    
     def open_profile_window(user_id):
         profile_win = ctk.CTkToplevel(window)
         profile_win.title("My Profile")
@@ -336,10 +333,8 @@ def open_user_dashboard(user_id, username):
         conn = sqlite3.connect("userdata.db")
         cur = conn.cursor()
 
-        cur.execute("""
-            SELECT name, manufacturer, description, price, category, quantity
-            FROM project_parts
-            WHERE project_id = ?
+        cur.execute(""" SELECT name, manufacturer, description, price, category, quantity
+            FROM project_parts WHERE project_id = ?
         """, (project_id,))
 
 
@@ -348,9 +343,9 @@ def open_user_dashboard(user_id, username):
 
         if not parts:
             formatted_parts = "No parts found for this project."
+
         else:
-            formatted_parts = "\n".join(
-                f"- {name} ({category}) x{qty} — {manufacturer or 'Unknown'}, "
+            formatted_parts = "\n".join(f"- {name} ({category}) x{qty} — {manufacturer or 'Unknown'}, "
                 f"{description or 'No description'} (${price})"
                 for name, manufacturer, description, price, category, qty in parts
             )
@@ -377,7 +372,8 @@ def open_user_dashboard(user_id, username):
         try:
             response = client.chat.completions.create(
                 model="gpt-4.1-mini",
-                messages=[
+                messages=
+                [
                     {"role": "system", "content": "Reply ONLY with: X.X - Explanation"},
                     {"role": "user", "content": prompt}
                 ],
@@ -388,14 +384,15 @@ def open_user_dashboard(user_id, username):
             result = response.choices[0].message["content"].strip()
 
             if " - " not in result:
-                return "3.0 - Formatting issue."
 
-            return result
+                return "3.0 - Formatting issue."
+            else:
+
+                return result
 
         except Exception as e:
             print("ChatGPT API Error:", e)
             return "3.0 - Error generating compatibility score."
-
 
     def switch_to_compatibility():
         clear_overlays()
@@ -492,9 +489,7 @@ def open_user_dashboard(user_id, username):
             result = compatibility(pid)
             score_str, explanation = result.split(" - ", 1)
 
-            # Update numeric rating
             rating.configure(text=score_str)
-
 
             try:
                 score_float = float(score_str)
@@ -502,7 +497,6 @@ def open_user_dashboard(user_id, username):
             except:
                 update_star_display(3.0)
 
-            # Update explanation
             project_details.configure(
                 text=(
                     f"📦 {pname}\nProject ID: {pid}\n📅 Created: {pdate}\n\n"
@@ -527,7 +521,6 @@ def open_user_dashboard(user_id, username):
         else:
             ctk.CTkLabel(project_list, text="No projects found.", text_color="gray").pack(pady=20)
 
-  
     def switch_to_resell():
         clear_overlays()
         clearLabels()
@@ -774,73 +767,82 @@ def open_user_dashboard(user_id, username):
                 ctk.CTkLabel(frame, text=f"Error fetching engines: {e}", text_color="red").pack(pady=10)
 
     def open_engine_popup(row_index, button_widget, project_id, parts_frame):
-        import requests 
         popup = ctk.CTkToplevel(window)
         popup.title("Select an Engine")
-        popup.geometry("600x400")
+        popup.geometry("500x400")
         popup.configure(fg_color="#260356")
         popup.grab_set()
 
-        eL = ctk.CTkLabel(popup, text="Fetching available engines...", font=ctk.CTkFont(size=18, weight="bold"), text_color="white")
-        eL.pack(pady=10)
+        ctk.CTkLabel(
+            popup,
+            text="Choose an Engine",
+            text_color="white",
+            font=ctk.CTkFont(size=18, weight="bold")
+        ).pack(pady=10)
 
-        frame = ctk.CTkScrollableFrame(popup, fg_color="#3A1A6B", width=560, height=300)
+        frame = ctk.CTkScrollableFrame(popup, fg_color="#3A1A6B", width=460, height=300)
         frame.pack(pady=10)
 
-        def fetch_carapi_engines():
-            try:
-                url = "https://api.carapi.app/v2/engines"
-                headers = {
-                    "accept": "application/json",
-                    "authorization": f"Bearer {CARAPI_TOKEN}"
-                }
-                resp = requests.get(url, headers=headers, timeout=10)
+        # ---- HARD-CODED ENGINE LIST ----
+        engines = [
+            {"id": 101, "name": "V8 5.0L", "make": "Ford", "hp": 435},
+            {"id": 102, "name": "V6 3.5L", "make": "Honda", "hp": 280},
+            {"id": 103, "name": "2.0L Turbo I4", "make": "BMW", "hp": 255},
+            {"id": 104, "name": "6.2L Hellcat V8", "make": "Dodge", "hp": 707},
+            {"id": 105, "name": "Electric Drive Unit", "make": "Tesla", "hp": 450},
+        ]
 
-                data = resp.json()
+        # Create a button for each engine
+        for eng in engines:
+            def select_engine(e=eng):
+                # Close popup
+                popup.destroy()
 
-                for widget in frame.winfo_children():
-                    widget.destroy()
+                # Remove engine button
+                if button_widget and button_widget.winfo_exists():
+                    button_widget.destroy()
 
-                engines = data.get("data", [])
-                if not engines:
-                    ctk.CTkLabel(frame, text="No engines found.", text_color="red").pack(pady=10)
-                    return
+                # Display selected engine
+                ctk.CTkLabel(
+                    parts_frame,
+                    text=f"{e['name']} ({e['make']})\n{e['hp']} HP",
+                    text_color="white",
+                    fg_color="#5A3392",
+                    corner_radius=8,
+                    width=200,
+                    height=60,
+                    justify="left"
+                ).grid(row=row_index, column=0, padx=10, pady=5)
 
-                for eng in engines[:10]:
-                    name = eng.get("name", "Unknown Engine")
-                    manufacturer = eng.get("make", "Unknown")
-                    displacement = eng.get("displacement", "N/A")
+                # Save to DB
+                try:
+                    conn = sqlite3.connect("userdata.db")
+                    cur = conn.cursor()
 
-                    def select_engine(e=name, m=manufacturer, d=displacement):
-                        popup.destroy()
-                        if button_widget and button_widget.winfo_exists():
-                            button_widget.destroy()
-                        ctk.CTkLabel(parts_frame, text=f"{e}\n{m}\n{d}", text_color="#FFFFFF", fg_color="#5A3392", corner_radius=8,
-                            width=190, height=60, font=ctk.CTkFont(size=13), justify="left"
-                        ).grid(row=row_index, column=0, pady=3, padx=13)
+                    # Remove old engine if exists
+                    cur.execute("DELETE FROM project_parts WHERE project_id=? AND category='engine'", (project_id,))
 
-                        try:
-                            conn = sqlite3.connect("userdata.db")
-                            cur = conn.cursor()
-                            cur.execute("""
-                                INSERT INTO project_parts (project_id, part_id, quantity)
-                                VALUES (?, ?, 1)
-                            """, (project_id, eng.get("id", 0)))
-                            conn.commit()
-                            conn.close()
-                        except Exception as e:
-                            print("DB save error:", e)
+                    # Insert new
+                    cur.execute("""
+                        INSERT INTO project_parts (project_id, part_id, quantity, category)
+                        VALUES (?, ?, 1, 'engine')
+                    """, (project_id, e["id"]))
 
-                    ctk.CTkButton(frame, text=f"{name} | {manufacturer} | {displacement}", fg_color="#5A3392", hover_color="#8749DF",
-                        text_color="white", font=ctk.CTkFont(size=13), command=select_engine
-                    ).pack(pady=3, padx=10, fill="x")
+                    conn.commit()
+                    conn.close()
+                except Exception as err:
+                    print("DB error:", err)
 
-            except Exception as e:
-                for widget in frame.winfo_children():
-                    widget.destroy()
-                ctk.CTkLabel(frame, text=f"Error fetching engines: {e}", text_color="red").pack(pady=10)
+            ctk.CTkButton(
+                frame,
+                text=f"{eng['name']}  |  {eng['make']}  |  {eng['hp']} HP",
+                fg_color="#5A3392",
+                hover_color="#8749DF",
+                text_color="white",
+                corner_radius=8,
+                command=select_engine
+            ).pack(fill="x", padx=10, pady=5)
 
-        window.after(200, fetch_carapi_engines)
         
     def component_popup(type, project_id):
         import requests
@@ -994,7 +996,6 @@ def open_user_dashboard(user_id, username):
         
         save_popup("Message deleted successfully.")
 
-        # Update the forum view
         forum(user_id, username)
         
     def save_forum_message(user_id, username, message):
@@ -1023,48 +1024,102 @@ def open_user_dashboard(user_id, username):
         conn.close()
 
     def forum(user_id, username):
+        clear_overlays()
+        clearLabels()
+
+        print("Opening forum for user:", username)
+
+        # ---------------- BACKGROUND IMAGE ----------------
         base_path = Path(__file__).parent / "Images"
         try:
             forum_bg_img = ctk.CTkImage(Image.open(base_path / "Forum.png"), size=(450, 800))
-            postM = ctk.CTkImage(Image.open(base_path / "Post.png"), size=(128, 43))
-        except Exception as e:
-            print(f"Error loading forum background image: {e}")
+        except:
             forum_bg_img = None
-        print("Opening forum for user:", username)
 
-        forum = ctk.scrollable_frame(content_frame, text="", image=forum_bg_img, fg_color="transparent", height=450, width=800)
-        forum.place(relx=0.5, rely=0, anchor="center")
+        if forum_bg_img:
+            bg_label = ctk.CTkLabel(content_frame, image=forum_bg_img, text="")
+            bg_label.place(relx=0.5, rely=0, anchor="n")
 
-        entry = ctk.entry(forum, fg_color="#7745BD", placeholder_text="Add a message.", font=("Segoe UI", 12, "bold"), width="385", height="40", corner_radius="12")
-        entry.place(x=(372-335), y=(732-88), anchor="nw")
+        # ---------------- SCROLLING MESSAGE WINDOW ----------------
+        forum_frame = ctk.CTkScrollableFrame(
+            content_frame,
+            fg_color="transparent",
+            width=430,
+            height=650,
+        )
+        forum_frame.place(relx=0.5, rely=0.05, anchor="n")
 
-        postMessage = ctk.CTkButton(forum, fg_color="#5E329C", text="", width="128", height="43", corner_radius="12", image=postM, command=lambda: save_forum_message(user_id, username, entry.get()))
-        postMessage.place(x=(637-335), y=(799-88), anchor="nw")
-
-        #Load existing messages
+        # ---------------- LOAD MESSAGES ----------------
         conn = sqlite3.connect("userdata.db")
         cur = conn.cursor()
-        cur.execute("SELECT id, user_id, username, message, timestamp FROM forum_messages ORDER BY timestamp DESC")
+        cur.execute("""
+            SELECT id, user_id, username, message, timestamp 
+            FROM forum_messages
+            ORDER BY timestamp DESC
+        """)
         messages = cur.fetchall()
-
         conn.close()
-        offset_messages = 15
+
         for msg_id, uid, uname, msg, ts in messages:
 
-            msg_frame = ctk.CTkFrame(forum, fg_color="#5A3392", width=700, height=100, corner_radius=12)
-            msg_frame.place(x=50, y=offset_messages, anchor="nw")
+            msg_frame = ctk.CTkFrame(
+                forum_frame,
+                fg_color="#5A3392",
+                corner_radius=10
+            )
+            msg_frame.pack(fill="x", padx=10, pady=8)
 
-            msg_label = ctk.CTkLabel(msg_frame, text=f"{uname} (@{ts}):\n{msg}", font=("Segoe UI", 12), text_color="white", justify="left", wraplength=650)
-            msg_label.place(x=10, y=10)
+            msg_label = ctk.CTkLabel(
+                msg_frame,
+                text=f"{uname} ({ts}):\n{msg}",
+                font=("Segoe UI", 12),
+                text_color="white",
+                justify="left",
+                wraplength=380
+            )
+            msg_label.pack(side="left", padx=10, pady=10)
 
+            # ----- DELETE BUTTON (only user's own posts) -----
             if uid == user_id:
-                delete_btn = ctk.CTkButton(msg_frame, text="Delete", fg_color="#AA3333", hover_color="#FF5555", width=60, height=30,
-                                           command=lambda mid=msg_id: delete_forum_message(mid))
-                delete_btn.place(x=620, y=60)
+                del_btn = ctk.CTkButton(
+                    msg_frame,
+                    text="Delete",
+                    fg_color="#AA3333",
+                    hover_color="#DD4444",
+                    width=60,
+                    height=30,
+                    command=lambda mid=msg_id: delete_forum_message(mid)
+                )
+                del_btn.pack(side="right", padx=10, pady=10)
 
-            offset_messages += 110
+        # ---------------- ENTRY FIELD ----------------
+        entry = ctk.CTkEntry(
+            content_frame,
+            fg_color="#7745BD",
+            placeholder_text="Write a message...",
+            font=("Segoe UI", 12, "bold"),
+            width=330,
+            height=40,
+            corner_radius=12
+        )
+        entry.place(relx=0.5, rely=0.89, anchor="center")
 
-        forum.configure(scrollbar_button_color="#A392BB", scrollbar_button_hover_color="#FFFFFF")
+        # ---------------- POST BUTTON ----------------
+        post_btn = ctk.CTkButton(
+            content_frame,
+            fg_color="#5E329C",
+            text="Post",
+            width=120,
+            height=40,
+            corner_radius=12,
+            command=lambda: save_forum_message(user_id, username, entry.get())
+        )
+        post_btn.place(relx=0.5, rely=0.96, anchor="center")
+
+
+
+
+
 
 
         def open_profile(user_id, username):
@@ -1384,8 +1439,15 @@ def open_user_dashboard(user_id, username):
         except Exception as e:
             print(f"Error loading button images: {e}")
 
-        engine_btn = ctk.CTkButton(scroll_frame, image=engine_img, text="", fg_color="transparent", border_width=0, hover_color="#170438", command=clicked)
-        engine_btn.place(x=180, y=165, anchor="nw")
+
+
+        if username == "a":
+            enginePlaceholder = ctk.CTkLabel(scroll_frame, text="Twin Turbo V8\nFord\n5.0L\n450 HP", text_color="white", fg_color="#5A3392", corner_radius=8,
+                        width=200, height=29, font=ctk.CTkFont(size=13), justify="left")
+            enginePlaceholder.place(x=180, y=166, anchor="nw")  
+        else:
+            engine_btn = ctk.CTkButton(scroll_frame, image=engine_img, text="", fg_color="transparent", border_width=0, hover_color="#170438", command=clicked)
+            engine_btn.place(x=180, y=166, anchor="nw")
         transmission_btn = ctk.CTkButton(scroll_frame, image=transmission_img, text="", fg_color="transparent", border_width=0, hover_color="#170438", command=clicked)
         transmission_btn.place(x=180, y=235, anchor="nw")
         suspension_btn = ctk.CTkButton(scroll_frame, image=suspension_img, text="", fg_color="transparent", border_width=0, hover_color="#170438", command=clicked)
@@ -1578,6 +1640,7 @@ def open_user_dashboard(user_id, username):
         window.myprojects_img = ctk.CTkImage(Image.open(base_path / "MyProjects_btn.png"), size=(42, 202))
         window.home_img = ctk.CTkImage(Image.open(base_path / "Home.png"), size=(996, 619))
         window.takeme_img = ctk.CTkImage(Image.open(base_path / "TakeMe.png"), size=(171, 39))
+        window.forum_img = ctk.CTkImage(Image.open(base_path / "OpenForum.png"), size=(65, 65))
         print("Images loaded successfully.")
     except Exception as e:
         import traceback; traceback.print_exc()
@@ -1600,6 +1663,9 @@ def open_user_dashboard(user_id, username):
     takeme_btn = ctk.CTkButton(window, height=39, width=171, image=window.takeme_img, text="", fg_color="transparent", hover_color="#360A64", command=my_projects)
     takeme_btn_window = canvas.create_window(105,550,anchor="nw",window=takeme_btn)
     create_overlay()
+
+    forum_btn = ctk.CTkButton(window, height=55, width=60, image=window.forum_img, text="", fg_color="transparent", hover_color="#360A64", command=lambda: forum(user_id, username))
+    canvas.create_window(985,605,anchor="nw",window=forum_btn)
 
     canvas.place(x = 0, y = 0)
     image_image_1 = PhotoImage(
